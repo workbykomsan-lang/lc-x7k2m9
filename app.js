@@ -85,7 +85,11 @@ const SR=44100;
 const CATS=[['whoosh','ووش',12],['pop','بوب',10],['ding','دينج',10],['hit','ضربة',10],['riser','رايزر',8],['click','نقرة',6]];
 const LIB=[];CATS.forEach(([k,ar,n])=>{for(let i=0;i<n;i++)LIB.push({id:k+(i+1),cat:k,ar:`${ar} ${i+1}`,en:`${k[0].toUpperCase()+k.slice(1)} ${i+1}`,i,n})});
 const sfxCache={};
-async function synth(it){ if(sfxCache[it.id])return sfxCache[it.id]; const f=it.i/Math.max(1,it.n-1);
+const SFXBASE='https://cdn.jsdelivr.net/gh/Reodelbasalan/adbertiser-sfx@ed6482ebd9c1283db4ee11b69dba3426c7dd5046/';
+const REAL={};const CARS={whoosh:'ووش',swish:'سويش',transition:'انتقال',riser:'رايزر',impact:'ضربة',cinematic:'سينمائي',horror:'رعب',pop:'بوب',ui:'نقرة',ding:'دينج',social:'سوشيال',crowd:'جمهور',festive:'احتفال',sports:'رياضة',money:'فلوس',typing:'كتابة',camera:'كاميرا',glitch:'جلتش',tech:'تقنية',magic:'سحر',cartoon:'كرتون',retro:'ريترو',stinger:'ستينجر',alert:'تنبيه',timer:'مؤقت',drums:'طبول',food:'أكل',paper:'ورق',foley:'مؤثرات واقعية',nature:'طبيعة'};
+async function loadReal(){try{const c=await (await fetch('sfx_catalog.json')).json();c.forEach((x,i)=>{const it={id:'r_'+x.name,cat:x.category,ar:(CARS[x.category]||x.category)+' '+(x.name.match(/(\d+)$/)||['',''])[1],en:x.name.replace(/_/g,' '),url:SFXBASE+x.file,real:true,tags:(x.tags||[]).join(' ')+' '+(x.description||'')};LIB.push(it);(REAL[x.category]=REAL[x.category]||[]).push(it)});renderLib($('lq').value)}catch(e){console.log('real sfx catalog failed',e)}}
+async function synth(it){ if(sfxCache[it.id])return sfxCache[it.id];
+  if(it.real){try{const ab=await (await fetch(it.url)).arrayBuffer();const dc=await new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,1,SR).decodeAudioData(ab);const oc=new OfflineAudioContext(1,Math.ceil(dc.duration*SR),SR);const sr=oc.createBufferSource();sr.buffer=dc;sr.connect(oc.destination);sr.start();const b=await oc.startRendering(),d=b.getChannelData(0);let pk=0,sq=0;for(const v of d){pk=Math.max(pk,Math.abs(v));sq+=v*v}for(let i=0;i<d.length;i++)d[i]/=pk||1;const r={buf:b,rms:Math.sqrt(sq/d.length)/(pk||1)};sfxCache[it.id]=r;return r}catch(e){console.log('real sfx failed',it.id);return null}} const f=it.i/Math.max(1,it.n-1);
   const dur={whoosh:0.3+0.5*f,pop:0.18,ding:0.9,hit:0.45,riser:0.8+0.8*f,click:0.06}[it.cat];
   const oc=new OfflineAudioContext(1,Math.ceil(SR*dur),SR); const g=oc.createGain(); g.connect(oc.destination);
   const noise=()=>{const b=oc.createBuffer(1,Math.ceil(SR*dur),SR),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const s=oc.createBufferSource();s.buffer=b;return s};
@@ -98,14 +102,14 @@ async function synth(it){ if(sfxCache[it.id])return sfxCache[it.id]; const f=it.
   else {const n=noise(),hp=oc.createBiquadFilter();hp.type='highpass';hp.frequency.value=1500+f*3000;n.connect(hp);hp.connect(g);env(0.002,1,0.05);n.start()}
   const b=await oc.startRendering(); const d=b.getChannelData(0);let pk=0,sq=0;for(const v of d){pk=Math.max(pk,Math.abs(v));sq+=v*v}
   for(let i=0;i<d.length;i++)d[i]/=pk||1; const r={buf:b,rms:Math.sqrt(sq/d.length)/(pk||1)}; sfxCache[it.id]=r; return r}
-function renderLib(q){const L=$('lib');L.innerHTML='';const nq=(q||'').trim().toLowerCase();LIB.filter(x=>!nq||x.ar.includes(nq)||x.en.toLowerCase().includes(nq)||x.cat.includes(nq)).forEach(it=>{const b=document.createElement('button');b.className='sec';b.style.cssText='width:auto;font-size:13px;padding:6px 10px;margin:2px';b.textContent='▶ '+it.ar+' · '+it.en;b.onclick=async()=>{const r=await synth(it);const c=new AudioContext();const s=c.createBufferSource();s.buffer=r.buf;s.connect(c.destination);s.start()};L.appendChild(b)})}
-renderLib('');$('lq').oninput=e=>renderLib(e.target.value);
-window.__lib=()=>LIB.length;
+function renderLib(q){const L=$('lib');L.innerHTML='';const nq=(q||'').trim().toLowerCase();LIB.filter(x=>!nq||x.ar.includes(nq)||x.en.toLowerCase().includes(nq)||x.cat.includes(nq)||(x.tags||'').toLowerCase().includes(nq)).slice(0,nq?200:120).forEach(it=>{const b=document.createElement('button');b.className='sec';b.style.cssText='width:auto;font-size:13px;padding:6px 10px;margin:2px';b.textContent='▶ '+it.ar+' · '+it.en;b.onclick=async()=>{const r=await synth(it);if(!r)return;const c=new AudioContext();const s=c.createBufferSource();s.buffer=r.buf;s.connect(c.destination);s.start()};L.appendChild(b)})}
+renderLib('');loadReal();$('lq').oninput=e=>renderLib(e.target.value);
+window.__lib=()=>LIB.length;window.__real=async id=>{const it=LIB.find(x=>x.id===id);const r=await synth(it);return r&&[+r.buf.duration.toFixed(2),+r.rms.toFixed(3)]};
 function srcToOut(ts,segs){let acc=0;for(const [a,b] of segs){if(ts>=a&&ts<=b)return acc+ts-a;acc+=b-a}return -1}
 function localRms(ts){const a=Math.max(0,Math.floor((ts-0.15)*16000)),b=Math.min(samples.length,Math.floor((ts+0.15)*16000));let q=0;for(let i=a;i<b;i++)q+=samples[i]*samples[i];return Math.sqrt(q/Math.max(1,b-a))}
 const KEYS=['انتبه','مهم','ركز','سر','مفاجأة','اوعى','نصيحة','اهم'];
 async function planSfx(segs){ if(!$('sfxon').checked)return []; const ev=[]; const cutCat=$('sfxcut').value; const duck=+$('duck').value;
-  const mk=async(cat,idx)=>{const it=LIB.find(x=>x.id===cat+idx);return it?{it,...(await synth(it))}:null};
+  const RM={whoosh:'whoosh',hit:'impact',ding:'ding',pop:'pop',riser:'riser',click:'ui'};const mk=async(cat,idx)=>{const R=REAL[RM[cat]];if(R&&R.length){const it=R[(idx-1+R.length*4)%R.length];const r=await synth(it);if(r)return{it,...r}}const it=LIB.find(x=>x.id===cat+idx);if(!it)return null;const r=await synth(it);return r?{it,...r}:null};
   let acc=0;const tl=[];
   for(let i=0;i<segs.length;i++){ if(i>0&&cutCat!=='none'){const m=await mk(cutCat,1+(i%3));if(m)tl.push({t:acc-0.05,m,src:segs[i][0]})} acc+=segs[i][1]-segs[i][0]}
 
