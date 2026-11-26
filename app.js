@@ -120,14 +120,20 @@ async function planSfx(segs){ if(!$('sfxon').checked)return []; const ev=[]; con
 
 // ---- filler (اااا / hesitation) removal ----
 const FILL=new Set(['ا','اا','ااا','اه','اهه','ام','امم','اممم','مم','ممم','ايي','ايييي','اوو','اوووو','هه']);
+function repTakes(ws){const out=[];const K=ws.map(w=>norm(w.t).replace(/[^\u0621-\u064a]/g,''));const n=ws.length;let i=0;
+  while(i<n){let best=null;for(let L=Math.min(8,Math.floor((n-i)/2));L>=1&&!best;L--){const A=K.slice(i,i+L).join('');if(A.length<(L==1?3:6))continue;
+    for(let j=i+L;j<=Math.min(n-L,i+L+10);j++){if(ws[j].s-ws[i+L-1].s>7)break;const B=K.slice(j,j+L).join('');if(!B)continue;let d=lev(A,B)/Math.max(A.length,B.length);for(let k=0;k<L;k++){const x=K[i+k],y=K[j+k];if(lev(x,y)>(Math.min(x.length,y.length)>=5?1:0))d=1}if(d<=(L==1?0.0:0.15)&&K[j]==K[i]&&(L>1||ws[j].s-ws[i].s<1.6)){best=[L,j];break}}}
+  if(best){const [L,j]=best;out.push([ws[i].s,ws[j].s-0.03,'take']);i=j}else i++}
+  return out}
 function fillerIntervals(){const out=[];if(!words.length||!samples)return out;const hop=320,thr=0.012,n=Math.floor(samples.length/hop);
+  if($('rep')&&$('rep').checked)out.push(...repTakes(words));
   for(const w of words){const k=norm(w.t).replace(/[^\u0621-\u064a]/g,'');if(FILL.has(k))out.push([w.s,w.e,'word'])}
   let st=null;const cov=t=>words.some(w=>t>=w.s-0.15&&t<=Math.max(w.e,w.s+0.45)+0.1);
   for(let i=0;i<=n;i++){let on=false;if(i<n){let e=0;for(let j=0;j<hop;j++){const v=samples[i*hop+j];e+=v*v}on=Math.sqrt(e/hop)>thr&&!cov(i*hop/16000)}
     if(on){if(st===null)st=i}else if(st!==null){const a=st*hop/16000,b=i*hop/16000;if(b-a>=0.35)out.push([a,b,'sound']);st=null}}
   return out}
 function subtractIv(segs,iv){let r=segs.map(x=>[x[0],x[1]]);for(const [a0,b0] of iv){const a=a0-0.02,b=b0+0.02;const nr=[];for(const [s,e] of r){if(b<=s||a>=e){nr.push([s,e]);continue}if(a>s)nr.push([s,a]);if(b<e)nr.push([b,e])}r=nr}return r.filter(x=>x[1]-x[0]>0.15)}
-window.__words=()=>words.map(w=>[w.t,w.s,w.e]);window.__fillers=()=>fillerIntervals().map(x=>[+x[0].toFixed(2),+x[1].toFixed(2),x[2]]);
+window.__words=()=>words.map(w=>[w.t,w.s,w.e]);window.__rep=()=>repTakes(words).map(x=>[+x[0].toFixed(2),+x[1].toFixed(2)]);window.__fillers=()=>fillerIntervals().map(x=>[+x[0].toFixed(2),+x[1].toFixed(2),x[2]]);
 
 const TOPICS={money:['فلوس','جنيه','دولار','ربح','خصم','عرض','سعر','اشتري','مبيعات','تجاره','شغل','بيزنس','استثمار','مشروع','دخل'],tech:['تطبيق','موبايل','ذكاء','اصطناعي','برنامج','تقنيه','موقع','فيديو','مونتاج','ايفون','اندرويد','كمبيوتر','ai'],fun:['هههه','ضحك','طريف','مقلب','نكته','فرحه','ممتع','حلو','جامد'],serious:['صحه','دكتور','علاج','قران','دين','قانون','تعليم','درس','شرح','معلومه','مهم','خطر','تحذير'],story:['حكايه','قصه','زمان','فاكر','يوم','حصل','مره']};
 function pickPreset(){const by=n=>presets.find(p=>p.name===n)||presets[0];const sc={};const ws=words.map(w=>norm(w.t).toLowerCase());
