@@ -49,6 +49,35 @@ function drawCaption(ctx,t,W,H){
   grp.forEach((w,k)=>{x-=ws[k];const col=(k===cur&&preset.highlight)?preset.highlight:preset.fill;
     if(preset.stroke&&!preset.bg){ctx.lineWidth=(preset.stroke_w||6)*W/1080*1.4;ctx.strokeStyle=preset.stroke;ctx.lineJoin='round';ctx.strokeText(w.t,x,y)}
     ctx.fillStyle=col;ctx.fillText(w.t,x,y);x-=gapx})}
+
+// ---- Text Stretch (kashida) ----
+const NOCONN=new Set('اأإآدذرزوؤءةى');
+const KW={س:5,ش:5,ب:3,ت:3,ث:3,ن:3,ي:3,ئ:2,ف:3,ق:3,ك:4,ل:2,م:2,ع:3,غ:3,ح:4,ج:4,خ:4,ص:4,ض:4,ط:3,ظ:3,ه:1};
+const isAr=c=>/[\u0621-\u064a]/.test(c);
+function stretchWord(w,n){
+  if(n<=0)return w; const cl=[];for(const ch of w){if(/[\u064b-\u0652\u0670]/.test(ch)&&cl.length)cl[cl.length-1]+=ch;else cl.push(ch)}
+  const cand=[];cl.forEach((c,i)=>{const b=c[0];if(i<cl.length-1&&isAr(b)&&!NOCONN.has(b)&&isAr(cl[i+1][0])&&!(i===0&&cl.length<3))cand.push([i,KW[b]||1])});
+  if(!cand.length)return w; cand.sort((a,b)=>b[1]-a[1]||a[0]-b[0]); const add={};let k=0;
+  while(k<n){const c=cand[k%cand.length];add[c[0]]=(add[c[0]]||0)+1;k++;if(k>=6)break}
+  return cl.map((c,i)=>c+'\u0640'.repeat(add[i]||0)).join('')}
+function stretchLine(line,amt){const n=Math.round(Math.max(0,amt)*5);return line.split(/\s+/).map(w=>w.length>=3?stretchWord(w,n):w).join(' ')}
+const spring=x=>x>=1?1:1-Math.cos(x*2.6*Math.PI)*Math.exp(-3.2*x);
+const easeOut=x=>1-Math.pow(1-Math.min(1,x),3);
+function drawTitle(ctx,t,W,H){
+  const txt=($('ttl')||{}).value; if(!txt||!txt.trim())return; const D=2.8; if(t<0||t>D)return;
+  const anim=$('tan').value, lines=txt.trim().split('\n').slice(0,3);
+  const e=Math.min(1,t/0.6), ex=Math.max(0,(t-(D-0.35))/0.35);
+  const p=preset||{}; let size=Math.round(W*0.13); ctx.direction='rtl';ctx.textBaseline='middle';ctx.textAlign='center';
+  for(let k=0;k<4;k++){ctx.font=`900 ${size}px "${p.font||'Cairo'}"`;const mw=Math.max(...lines.map(l=>ctx.measureText(stretchLine(l,1)).width));if(mw<=W*0.82)break;size=Math.floor(size*W*0.82/mw)}
+  let alpha=Math.min(1,e*2.2)*(1-ex),sc=1+0.08*ex,tx=0,ty=0,amt=spring(Math.min(1,t/1.0)),filt="none",vis=1e9;
+  if(anim==='pop')sc*=0.55+0.45*spring(e); if(anim==='up')ty=(1-easeOut(e))*H*0.07; if(anim==='right')tx=(1-easeOut(e))*W*0.55;
+  if(anim==='blur')filt=`blur(${((1-e)*18).toFixed(1)}px)`; if(anim==='type'){amt=easeOut(Math.min(1,t/0.9));vis=Math.ceil(Math.min(1,t/0.9)*lines.join(' ').split(/\s+/).length)}
+  ctx.save();ctx.globalAlpha=alpha;ctx.filter=filt;ctx.translate(W/2+tx,H*0.30+ty);ctx.scale(sc,sc);
+  let seen=0; lines.forEach((l,i)=>{const ws=l.split(/\s+/);const shown=ws.filter(()=>++seen<=vis);if(!shown.length)return;const str=stretchLine(shown.join(' '),amt),y=i*size*1.3-(lines.length-1)*size*0.65;
+    ctx.lineJoin='round';ctx.lineWidth=size*0.14;ctx.strokeStyle=p.stroke||'#0B1F14';ctx.strokeText(str,0,y);ctx.fillStyle=p.highlight||'#FFD400';ctx.fillText(str,0,y)});
+  ctx.restore()}
+window.__titleFrame=t=>{const c=$('cv'),x=c.getContext('2d');x.fillStyle='#0B3D1E';x.fillRect(0,0,c.width,c.height);drawTitle(x,t,c.width,c.height);return c.toDataURL('image/png')};
+$('tpv').onclick=()=>{const c=$('pv'),x=c.getContext('2d');const t0=performance.now();const f=()=>{const t=((performance.now()-t0)/1000)%3.4;const g=x.createLinearGradient(0,0,c.width,c.height);g.addColorStop(0,'#0B3D1E');g.addColorStop(1,'#12602f');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);drawTitle(x,t,c.width,c.height);if(performance.now()-t0<10200)requestAnimationFrame(f)};f()};
 $('rn').onclick=async()=>{ $('rn').disabled=true; $('m3').textContent='بصدّر الفيديو (بياخد نفس مدة الفيديو تقريبا)...';
   const cv=$('cv'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height; const el=$('src'); el.muted=false;
   let segs=$('cut').checked?segmentsFromAudio(+$('gap').value):[[0,dur]]; if(!segs.length)segs=[[0,dur]]; if($('zoom').checked)segs=splitLong(segs);
@@ -64,7 +93,7 @@ $('rn').onclick=async()=>{ $('rn').disabled=true; $('m3').textContent='بصدّ�
     const z=(si%2===1&&$('zoom').checked)?1.12:1;ctx.fillStyle='#0B3D1E';ctx.fillRect(0,0,W,H);
     if(isVideo&&el.videoWidth){const s=Math.max(W/el.videoWidth,H/el.videoHeight)*z;const dw=el.videoWidth*s,dh=el.videoHeight*s;ctx.drawImage(el,(W-dw)/2,(H-dh)/2,dw,dh)}
     else{const gr=ctx.createLinearGradient(0,0,W,H);gr.addColorStop(0,'#0B3D1E');gr.addColorStop(1,'#00C853');ctx.fillStyle=gr;ctx.fillRect(0,0,W,H)}
-    drawCaption(ctx,t,W,H);$('m3').textContent=`تصدير ${Math.round((outT+t-segs[si][0])/total*100)}%`;requestAnimationFrame(tick)};
+    drawCaption(ctx,t,W,H);drawTitle(ctx,outT+t-segs[si][0],W,H);$('m3').textContent=`تصدير ${Math.round((outT+t-segs[si][0])/total*100)}%`;requestAnimationFrame(tick)};
   requestAnimationFrame(tick); await done; el.muted=true;
   let blob=new Blob(chunks,{type:mime.split(';')[0]}); let note='';
   if(mime.startsWith('video/mp4')&&($('loud').checked||!/mp4a/.test(mime))){ try{$('m3').textContent='بحوّل الصوت لـ AAC عشان واتساب وإنستا...';blob=await toAac(blob);note=' | AAC ✓'+($('loud').checked?' | -14 LUFS':'')}catch(err){note=' | AAC فشل: '+err} }
