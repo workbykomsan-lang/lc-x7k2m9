@@ -23,6 +23,10 @@ video,canvas{width:100%;border-radius:12px;background:#000}.msg{color:#9fd;font-
 <div class="msg">تصحيح كلمات (اكتب: الغلط=الصح، سطر لكل كلمة):</div>
 <textarea id="vocab" placeholder="جوجل فلو=جوجل فلو&#10;لوكال هب=Local Hub"></textarea>
 <button id="tr" disabled>فرّغ الكلام</button><div class="msg" id="m2"></div><div class="words" id="words"></div></div>
+<div class="card"><div class="step">2.5) عنوان بمدّ الكلمات (كشيدة)</div>
+<textarea id="ttl" placeholder="اكتب عنوان الهوك (سطر لكل جزء، لحد 3 سطور)&#10;مثال: سرّع مونتاجك&#10;بدقيقة"></textarea>
+<label>الحركة<select id="tan"><option value="stretch">مدّ ناعم</option><option value="pop">بوب</option><option value="up">طلوع</option><option value="right">دخول من اليمين</option><option value="blur">ضبابي</option><option value="type">كلمة كلمة</option></select></label>
+<button class="sec" id="tpv" type="button">شوف الحركة</button><canvas id="pv" width="360" height="360" style="width:100%;border-radius:12px;background:#0B3D1E;margin-top:8px"></canvas></div>
 <div class="card"><div class="step">3) الاستايل والقص</div><div class="presets" id="presets"></div>
 <label>قص السكتات<input type="checkbox" id="cut" checked></label>
 <label>حساسية القص<select id="sens"><option value="0.7">خفيف</option><option value="0.4" selected>متوسط</option><option value="0.25">سريع</option></select></label>
