@@ -78,16 +78,49 @@ function drawTitle(ctx,t,W,H){
   ctx.restore()}
 window.__titleFrame=t=>{const c=$('cv'),x=c.getContext('2d');x.fillStyle='#0B3D1E';x.fillRect(0,0,c.width,c.height);drawTitle(x,t,c.width,c.height);return c.toDataURL('image/png')};
 $('tpv').onclick=()=>{const c=$('pv'),x=c.getContext('2d');const t0=performance.now();const f=()=>{const t=((performance.now()-t0)/1000)%3.4;const g=x.createLinearGradient(0,0,c.width,c.height);g.addColorStop(0,'#0B3D1E');g.addColorStop(1,'#12602f');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);drawTitle(x,t,c.width,c.height);if(performance.now()-t0<10200)requestAnimationFrame(f)};f()};
+
+// ---- SFX library (synthesized in the browser, no files) ----
+const SR=44100;
+const CATS=[['whoosh','ووش',12],['pop','بوب',10],['ding','دينج',10],['hit','ضربة',10],['riser','رايزر',8],['click','نقرة',6]];
+const LIB=[];CATS.forEach(([k,ar,n])=>{for(let i=0;i<n;i++)LIB.push({id:k+(i+1),cat:k,ar:`${ar} ${i+1}`,en:`${k[0].toUpperCase()+k.slice(1)} ${i+1}`,i,n})});
+const sfxCache={};
+async function synth(it){ if(sfxCache[it.id])return sfxCache[it.id]; const f=it.i/Math.max(1,it.n-1);
+  const dur={whoosh:0.3+0.5*f,pop:0.18,ding:0.9,hit:0.45,riser:0.8+0.8*f,click:0.06}[it.cat];
+  const oc=new OfflineAudioContext(1,Math.ceil(SR*dur),SR); const g=oc.createGain(); g.connect(oc.destination);
+  const noise=()=>{const b=oc.createBuffer(1,Math.ceil(SR*dur),SR),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const s=oc.createBufferSource();s.buffer=b;return s};
+  const env=(a,peak,d)=>{g.gain.setValueAtTime(0.0001,0);g.gain.exponentialRampToValueAtTime(peak,a);g.gain.exponentialRampToValueAtTime(0.0001,d)};
+  if(it.cat==='whoosh'){const n=noise(),bp=oc.createBiquadFilter();bp.type='bandpass';bp.Q.value=1.2;const up=it.i%2===0;bp.frequency.setValueAtTime(up?300:3000+f*2000,0);bp.frequency.exponentialRampToValueAtTime(up?3500+f*3000:300,dur*0.9);n.connect(bp);bp.connect(g);env(dur*0.4,1,dur*0.98);n.start()}
+  else if(it.cat==='pop'){const o=oc.createOscillator();o.frequency.setValueAtTime(500+f*900,0);o.frequency.exponentialRampToValueAtTime(180+f*200,0.12);o.connect(g);env(0.008,1,0.17);o.start()}
+  else if(it.cat==='ding'){const base=520+f*900;[1,2.76,5.4].forEach((m,j)=>{const o=oc.createOscillator(),gg=oc.createGain();o.frequency.value=base*m;gg.gain.value=[1,0.4,0.15][j];o.connect(gg);gg.connect(g);o.start()});env(0.005,1,0.88)}
+  else if(it.cat==='hit'){const o=oc.createOscillator();o.frequency.setValueAtTime(140+f*60,0);o.frequency.exponentialRampToValueAtTime(40,0.3);o.connect(g);const n=noise(),lp=oc.createBiquadFilter();lp.type='lowpass';lp.frequency.value=600+f*3000;n.connect(lp);lp.connect(g);env(0.004,1,0.42);o.start();n.start()}
+  else if(it.cat==='riser'){const n=noise(),bp=oc.createBiquadFilter();bp.type='bandpass';bp.Q.value=2;bp.frequency.setValueAtTime(200,0);bp.frequency.exponentialRampToValueAtTime(5000+f*3000,dur);n.connect(bp);bp.connect(g);g.gain.setValueAtTime(0.02,0);g.gain.exponentialRampToValueAtTime(1,dur*0.97);g.gain.linearRampToValueAtTime(0,dur);n.start()}
+  else {const n=noise(),hp=oc.createBiquadFilter();hp.type='highpass';hp.frequency.value=1500+f*3000;n.connect(hp);hp.connect(g);env(0.002,1,0.05);n.start()}
+  const b=await oc.startRendering(); const d=b.getChannelData(0);let pk=0,sq=0;for(const v of d){pk=Math.max(pk,Math.abs(v));sq+=v*v}
+  for(let i=0;i<d.length;i++)d[i]/=pk||1; const r={buf:b,rms:Math.sqrt(sq/d.length)/(pk||1)}; sfxCache[it.id]=r; return r}
+function renderLib(q){const L=$('lib');L.innerHTML='';const nq=(q||'').trim().toLowerCase();LIB.filter(x=>!nq||x.ar.includes(nq)||x.en.toLowerCase().includes(nq)||x.cat.includes(nq)).forEach(it=>{const b=document.createElement('button');b.className='sec';b.style.cssText='width:auto;font-size:13px;padding:6px 10px;margin:2px';b.textContent='▶ '+it.ar+' · '+it.en;b.onclick=async()=>{const r=await synth(it);const c=new AudioContext();const s=c.createBufferSource();s.buffer=r.buf;s.connect(c.destination);s.start()};L.appendChild(b)})}
+renderLib('');$('lq').oninput=e=>renderLib(e.target.value);
+window.__lib=()=>LIB.length;
+function srcToOut(ts,segs){let acc=0;for(const [a,b] of segs){if(ts>=a&&ts<=b)return acc+ts-a;acc+=b-a}return -1}
+function localRms(ts){const a=Math.max(0,Math.floor((ts-0.15)*16000)),b=Math.min(samples.length,Math.floor((ts+0.15)*16000));let q=0;for(let i=a;i<b;i++)q+=samples[i]*samples[i];return Math.sqrt(q/Math.max(1,b-a))}
+const KEYS=['انتبه','مهم','ركز','سر','مفاجأة','اوعى','نصيحة','اهم'];
+async function planSfx(segs){ if(!$('sfxon').checked)return []; const ev=[]; const cutCat=$('sfxcut').value; const duck=+$('duck').value;
+  const mk=async(cat,idx)=>{const it=LIB.find(x=>x.id===cat+idx);return it?{it,...(await synth(it))}:null};
+  let acc=0;const tl=[];
+  for(let i=0;i<segs.length;i++){ if(i>0&&cutCat!=='none'){const m=await mk(cutCat,1+(i%3));if(m)tl.push({t:acc-0.05,m,src:segs[i][0]})} acc+=segs[i][1]-segs[i][0]}
+  if($('ttl').value.trim()){const m=await mk('hit',3);tl.push({t:0.05,m,src:segs[0][0]})}
+  let last=-9;for(const w of words){const o=srcToOut(w.s,segs);if(o<0||o-last<2)continue;const num=/[0-9\u0660-\u0669]/.test(w.t),key=KEYS.some(k=>norm(w.t).includes(norm(k)));if(num||key){const m=await mk(num?'ding':'hit',num?2:5);if(m){tl.push({t:o,m,src:w.s});last=o}}}
+  return tl.sort((a,b)=>a.t-b.t).map(e=>({t:Math.max(0,e.t),buf:e.m.buf,gain:Math.min(1.5,Math.max(0.03,localRms(e.src)*Math.pow(10,-duck/20)/e.m.rms))}))}
 $('rn').onclick=async()=>{ $('rn').disabled=true; $('m3').textContent='بصدّر الفيديو (بياخد نفس مدة الفيديو تقريبا)...';
   const cv=$('cv'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height; const el=$('src'); el.muted=false;
   let segs=$('cut').checked?segmentsFromAudio(+$('gap').value):[[0,dur]]; if(!segs.length)segs=[[0,dur]]; if($('zoom').checked)segs=splitLong(segs);
-  const ac=new AudioContext(); const msrc=ac.createMediaElementSource(el); const dest=ac.createMediaStreamDestination(); const gn=ac.createGain(); msrc.connect(gn); gn.connect(dest);
+  const sfxPlan=await planSfx(segs); window.__sfx=sfxPlan.map(e=>[+e.t.toFixed(2),+e.gain.toFixed(3)]); let sx=0; const ac=new AudioContext(); const msrc=ac.createMediaElementSource(el); const dest=ac.createMediaStreamDestination(); const gn=ac.createGain(); msrc.connect(gn); gn.connect(dest); const sfxOut=ac.createGain(); sfxOut.connect(dest);
   const stream=new MediaStream([...cv.captureStream(30).getVideoTracks(),...dest.stream.getAudioTracks()]);
   const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported(m));
   const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8e6}); const chunks=[];rec.ondataavailable=e=>chunks.push(e.data);
   const done=new Promise(r=>rec.onstop=r); let si=0,fading=false; el.currentTime=segs[0][0]; await new Promise(r=>{el.onseeked=r}); await ac.resume(); rec.start(); await el.play();
   const total=segs.reduce((a,s)=>a+s[1]-s[0],0); let outT=0;
   const tick=()=>{const t=el.currentTime;
+    {const ot=outT+t-segs[si][0];while(sx<sfxPlan.length&&sfxPlan[sx].t<=ot){const e=sfxPlan[sx++];const b=ac.createBufferSource();b.buffer=ac.createBuffer(1,e.buf.length,e.buf.sampleRate);b.buffer.copyToChannel(e.buf.getChannelData(0),0);const g2=ac.createGain();g2.gain.value=e.gain;b.connect(g2);g2.connect(sfxOut);b.start()}}
     if(t>=segs[si][1]-0.035&&!fading){fading=true;const n=ac.currentTime;gn.gain.cancelScheduledValues(n);gn.gain.setValueAtTime(1,n);gn.gain.linearRampToValueAtTime(0,n+0.02)}
     if(t>=segs[si][1]-0.012){outT+=segs[si][1]-segs[si][0];si++;if(si>=segs.length){el.pause();rec.stop();return} el.currentTime=segs[si][0];fading=false;const n=ac.currentTime;gn.gain.cancelScheduledValues(n);gn.gain.setValueAtTime(0,n);gn.gain.linearRampToValueAtTime(1,n+0.02)}
     const z=(si%2===1&&$('zoom').checked)?1.12:1;ctx.fillStyle='#0B3D1E';ctx.fillRect(0,0,W,H);
