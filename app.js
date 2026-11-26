@@ -1,11 +1,12 @@
 const $=x=>document.getElementById(x);
-let file,url,samples,dur=0,words=[],preset=null,presets=[],isVideo=true;
+let autoStyle=true,file,url,samples,dur=0,words=[],preset=null,presets=[],isVideo=true;
 const FONTS={Cairo:'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf','Tajawal-ExtraBold':'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/tajawal/Tajawal-ExtraBold.ttf','Almarai-ExtraBold':'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/almarai/Almarai-ExtraBold.ttf',Changa:'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/changa/Changa%5Bwght%5D.ttf','IBMPlexSansArabic-Bold':'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/ibmplexsansarabic/IBMPlexSansArabic-Bold.ttf',ElMessiri:'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/elmessiri/ElMessiri%5Bwght%5D.ttf',Lemonada:'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/lemonada/Lemonada%5Bwght%5D.ttf',ReemKufi:'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/reemkufi/ReemKufi%5Bwght%5D.ttf'};
 const worker=new Worker('asr-worker.js',{type:'module'});
 let wres=null; worker.onmessage=({data:d})=>{ if(d.type==='progress') $('m2').textContent=d.msg+(d.pct?` (${Math.round(d.pct*100)}%)`:''); if(d.type==='ready'&&wres.ready)wres.ready(); if(d.type==='result')wres.result(d.words); if(d.type==='error'){$('m2').textContent='مشكلة: '+d.error;wres.fail&&wres.fail(d.error)} };
 const loadFonts=async()=>{for(const [k,v] of Object.entries(FONTS)){const f=new FontFace(k,`url(${v})`,{weight:'100 1000'});await f.load();document.fonts.add(f)}};
 (async()=>{presets=await (await fetch('presets.json')).json();preset=presets[0];await loadFonts();
- const c=$('presets');presets.forEach(p=>{const d=document.createElement('div');d.className='p'+(p===preset?' on':'');d.textContent=p.name;d.style.background=p.bg||'#0B1F14';d.style.color=p.fill==='#111111'?'#111':(p.bg?p.fill:(p.highlight||p.fill));d.style.fontFamily=p.font;d.onclick=()=>{preset=p;[...c.children].forEach(x=>x.classList.remove('on'));d.classList.add('on')};c.appendChild(d)})})();
+ const c=$('presets');const ac0=document.createElement('div');ac0.className='p on';ac0.textContent='تلقائي ✨ حسب الموضوع';ac0.style.background='#1d5a35';ac0.onclick=()=>{autoStyle=true;[...c.children].forEach(x=>x.classList.remove('on'));ac0.classList.add('on')};c.appendChild(ac0);
+ presets.forEach(p=>{const d=document.createElement('div');d.className='p';d.textContent=p.name;d.style.background=p.bg||'#0B1F14';d.style.color=p.fill==='#111111'?'#111':(p.bg?p.fill:(p.highlight||p.fill));d.style.fontFamily=p.font;d.onclick=()=>{preset=p;autoStyle=false;[...c.children].forEach(x=>x.classList.remove('on'));d.classList.add('on')};c.appendChild(d)})})();
 $('gap').oninput=e=>$('gv').textContent=e.target.value;
 $('sens').onchange=e=>{$('gap').value=e.target.value;$('gv').textContent=e.target.value};
 async function decode(file){
@@ -43,7 +44,7 @@ function drawCaption(ctx,t,W,H){
   if(g<0)return; const grp=words.slice(g,g+n); let cur=0;grp.forEach((w,k)=>{if(t>=w.s)cur=k});
   let size=Math.round(W*0.115);ctx.direction='rtl';ctx.textBaseline='middle';ctx.textAlign='left';
   let gapx,ws,total;for(let k=0;k<4;k++){ctx.font=`900 ${size}px "${preset.font}"`;gapx=size*0.3;ws=grp.map(w=>ctx.measureText(w.t).width);total=ws.reduce((a,b)=>a+b,0)+gapx*(grp.length-1);if(total<=W*0.70)break;size=Math.floor(size*W*0.70/total)}
-  const y={low:H*0.68,center_low:H*0.60,center:H*0.5}[preset.pos||'low'];
+  const y=H*0.71;
   let x=(W+total)/2; 
   if(preset.bg){ctx.fillStyle=preset.bg;const pad=size*0.35;ctx.beginPath();ctx.roundRect((W-total)/2-pad,y-size*0.75,total+2*pad,size*1.5,pad);ctx.fill()}
   grp.forEach((w,k)=>{x-=ws[k];const col=(k===cur&&preset.highlight)?preset.highlight:preset.fill;
@@ -107,6 +108,12 @@ async function planSfx(segs){ if(!$('sfxon').checked)return []; const ev=[]; con
   const mk=async(cat,idx)=>{const it=LIB.find(x=>x.id===cat+idx);return it?{it,...(await synth(it))}:null};
   let acc=0;const tl=[];
   for(let i=0;i<segs.length;i++){ if(i>0&&cutCat!=='none'){const m=await mk(cutCat,1+(i%3));if(m)tl.push({t:acc-0.05,m,src:segs[i][0]})} acc+=segs[i][1]-segs[i][0]}
+
+  {const sents=[];let cur=[];words.forEach((w,i)=>{if(cur.length&&w.s-words[i-1].s>0.5){sents.push(cur);cur=[]}cur.push(w)});if(cur.length)sents.push(cur);
+   const avg=words.length?words.reduce((a,w)=>a+localRms(w.s),0)/words.length:1;let lastS=-9;
+   const sc=sents.map(g=>{let v=0;const L=KEYS.map(norm);if(g.some(w=>/[0-9\u0660-\u0669]/.test(w.t)))v+=2;if(g.some(w=>L.some(k=>norm(w.t).includes(k))))v+=2;const r=g.reduce((a,w)=>a+localRms(w.s),0)/g.length;if(r>avg*1.25)v+=1;if(g.length>=4)v+=0.5;return {g,v}});
+   const minN=Math.max(1,Math.ceil(segs.reduce((q,x)=>q+x[1]-x[0],0)/6));const acc=[];
+   for(const {g,v} of sc.slice().sort((x,y)=>y.v-x.v)){const o=srcToOut(g[0].s,segs);if(o<0||acc.some(t=>Math.abs(t-o)<3))continue;if(v<2&&acc.length>=minN)continue;const m=await mk('whoosh',1+(Math.round(v*2)%5));if(m){tl.push({t:Math.max(0,o-0.12),m,src:g[0].s});acc.push(o)}}}
   if($('ttl').value.trim()){const m=await mk('hit',3);tl.push({t:0.05,m,src:segs[0][0]})}
   let last=-9;for(const w of words){const o=srcToOut(w.s,segs);if(o<0||o-last<2)continue;const num=/[0-9\u0660-\u0669]/.test(w.t),key=KEYS.some(k=>norm(w.t).includes(norm(k)));if(num||key){const m=await mk(num?'ding':'hit',num?2:5);if(m){tl.push({t:o,m,src:w.s});last=o}}}
   return tl.sort((a,b)=>a.t-b.t).map(e=>({t:Math.max(0,e.t),buf:e.m.buf,gain:Math.min(1.5,Math.max(0.03,localRms(e.src)*Math.pow(10,-duck/20)/e.m.rms))}))}
@@ -121,8 +128,18 @@ function fillerIntervals(){const out=[];if(!words.length||!samples)return out;co
   return out}
 function subtractIv(segs,iv){let r=segs.map(x=>[x[0],x[1]]);for(const [a0,b0] of iv){const a=a0-0.02,b=b0+0.02;const nr=[];for(const [s,e] of r){if(b<=s||a>=e){nr.push([s,e]);continue}if(a>s)nr.push([s,a]);if(b<e)nr.push([b,e])}r=nr}return r.filter(x=>x[1]-x[0]>0.15)}
 window.__words=()=>words.map(w=>[w.t,w.s,w.e]);window.__fillers=()=>fillerIntervals().map(x=>[+x[0].toFixed(2),+x[1].toFixed(2),x[2]]);
+
+const TOPICS={money:['فلوس','جنيه','دولار','ربح','خصم','عرض','سعر','اشتري','مبيعات','تجاره','شغل','بيزنس','استثمار','مشروع','دخل'],tech:['تطبيق','موبايل','ذكاء','اصطناعي','برنامج','تقنيه','موقع','فيديو','مونتاج','ايفون','اندرويد','كمبيوتر','ai'],fun:['هههه','ضحك','طريف','مقلب','نكته','فرحه','ممتع','حلو','جامد'],serious:['صحه','دكتور','علاج','قران','دين','قانون','تعليم','درس','شرح','معلومه','مهم','خطر','تحذير'],story:['حكايه','قصه','زمان','فاكر','يوم','حصل','مره']};
+function pickPreset(){const by=n=>presets.find(p=>p.name===n)||presets[0];const sc={};const ws=words.map(w=>norm(w.t).toLowerCase());
+  for(const [k,list] of Object.entries(TOPICS)){const L=list.map(x=>norm(x).toLowerCase());sc[k]=ws.filter(w=>L.some(x=>w.includes(x))).length}
+  const rate=words.length/Math.max(1,dur),num=words.filter(w=>/[0-9\u0660-\u0669]/.test(w.t)).length;
+  let best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];let name;
+  if(best&&best[1]>0){name={money:rate>2.8?'One Word Punch':'Yellow Bar',tech:'Local Hub Pop',fun:'Fun',serious:'Clean',story:'Kufi Bold'}[best[0]]}
+  else name=rate>3.2?'Karaoke':(num>1?'Yellow Bar':'Green Box');
+  window.__autoStyle={name,scores:sc,rate:+rate.toFixed(2)};return by(name)}
 $('rn').onclick=async()=>{ $('rn').disabled=true; $('m3').textContent='بصدّر الفيديو (بياخد نفس مدة الفيديو تقريبا)...';
   const cv=$('cv'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height; const el=$('src'); el.muted=false;
+  if(autoStyle&&words.length)preset=pickPreset();
   let segs=$('cut').checked?segmentsFromAudio(+$('gap').value):[[0,dur]]; if(!segs.length)segs=[[0,dur]]; let fills=[];if($('fil').checked){fills=fillerIntervals();if(fills.length)segs=subtractIv(segs,fills);if(!segs.length)segs=[[0,dur]]} window.__nfill=fills.length; if($('zoom').checked)segs=splitLong(segs);
   const sfxPlan=await planSfx(segs); window.__sfx=sfxPlan.map(e=>[+e.t.toFixed(2),+e.gain.toFixed(3)]); let sx=0; const ac=new AudioContext(); const msrc=ac.createMediaElementSource(el); const dest=ac.createMediaStreamDestination(); const gn=ac.createGain(); msrc.connect(gn); gn.connect(dest); const sfxOut=ac.createGain(); sfxOut.connect(dest);
   const stream=new MediaStream([...cv.captureStream(30).getVideoTracks(),...dest.stream.getAudioTracks()]);
