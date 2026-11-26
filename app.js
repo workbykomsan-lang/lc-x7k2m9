@@ -110,9 +110,20 @@ async function planSfx(segs){ if(!$('sfxon').checked)return []; const ev=[]; con
   if($('ttl').value.trim()){const m=await mk('hit',3);tl.push({t:0.05,m,src:segs[0][0]})}
   let last=-9;for(const w of words){const o=srcToOut(w.s,segs);if(o<0||o-last<2)continue;const num=/[0-9\u0660-\u0669]/.test(w.t),key=KEYS.some(k=>norm(w.t).includes(norm(k)));if(num||key){const m=await mk(num?'ding':'hit',num?2:5);if(m){tl.push({t:o,m,src:w.s});last=o}}}
   return tl.sort((a,b)=>a.t-b.t).map(e=>({t:Math.max(0,e.t),buf:e.m.buf,gain:Math.min(1.5,Math.max(0.03,localRms(e.src)*Math.pow(10,-duck/20)/e.m.rms))}))}
+
+// ---- filler (اااا / hesitation) removal ----
+const FILL=new Set(['ا','اا','ااا','اه','اهه','ام','امم','اممم','مم','ممم','ايي','ايييي','اوو','اوووو','هه']);
+function fillerIntervals(){const out=[];if(!words.length||!samples)return out;const hop=320,thr=0.012,n=Math.floor(samples.length/hop);
+  for(const w of words){const k=norm(w.t).replace(/[^\u0621-\u064a]/g,'');if(FILL.has(k))out.push([w.s,w.e,'word'])}
+  let st=null;const cov=t=>words.some(w=>t>=w.s-0.15&&t<=Math.max(w.e,w.s+0.45)+0.1);
+  for(let i=0;i<=n;i++){let on=false;if(i<n){let e=0;for(let j=0;j<hop;j++){const v=samples[i*hop+j];e+=v*v}on=Math.sqrt(e/hop)>thr&&!cov(i*hop/16000)}
+    if(on){if(st===null)st=i}else if(st!==null){const a=st*hop/16000,b=i*hop/16000;if(b-a>=0.35)out.push([a,b,'sound']);st=null}}
+  return out}
+function subtractIv(segs,iv){let r=segs.map(x=>[x[0],x[1]]);for(const [a0,b0] of iv){const a=a0-0.02,b=b0+0.02;const nr=[];for(const [s,e] of r){if(b<=s||a>=e){nr.push([s,e]);continue}if(a>s)nr.push([s,a]);if(b<e)nr.push([b,e])}r=nr}return r.filter(x=>x[1]-x[0]>0.15)}
+window.__words=()=>words.map(w=>[w.t,w.s,w.e]);window.__fillers=()=>fillerIntervals().map(x=>[+x[0].toFixed(2),+x[1].toFixed(2),x[2]]);
 $('rn').onclick=async()=>{ $('rn').disabled=true; $('m3').textContent='بصدّر الفيديو (بياخد نفس مدة الفيديو تقريبا)...';
   const cv=$('cv'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height; const el=$('src'); el.muted=false;
-  let segs=$('cut').checked?segmentsFromAudio(+$('gap').value):[[0,dur]]; if(!segs.length)segs=[[0,dur]]; if($('zoom').checked)segs=splitLong(segs);
+  let segs=$('cut').checked?segmentsFromAudio(+$('gap').value):[[0,dur]]; if(!segs.length)segs=[[0,dur]]; let fills=[];if($('fil').checked){fills=fillerIntervals();if(fills.length)segs=subtractIv(segs,fills);if(!segs.length)segs=[[0,dur]]} window.__nfill=fills.length; if($('zoom').checked)segs=splitLong(segs);
   const sfxPlan=await planSfx(segs); window.__sfx=sfxPlan.map(e=>[+e.t.toFixed(2),+e.gain.toFixed(3)]); let sx=0; const ac=new AudioContext(); const msrc=ac.createMediaElementSource(el); const dest=ac.createMediaStreamDestination(); const gn=ac.createGain(); msrc.connect(gn); gn.connect(dest); const sfxOut=ac.createGain(); sfxOut.connect(dest);
   const stream=new MediaStream([...cv.captureStream(30).getVideoTracks(),...dest.stream.getAudioTracks()]);
   const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported(m));
