@@ -1,0 +1,95 @@
+[
+ {
+  "id": "lh_pop",
+  "name": "Local Hub Pop",
+  "font": "Cairo",
+  "fill": "#FFD400",
+  "stroke": "#0B3D1E",
+  "stroke_w": 8,
+  "words_per_line": 2,
+  "highlight": "#00C853",
+  "anim": "pop",
+  "pos": "center_low"
+ },
+ {
+  "id": "lh_box",
+  "name": "Green Box",
+  "font": "Tajawal-ExtraBold",
+  "fill": "#FFFFFF",
+  "bg": "#00C853",
+  "words_per_line": 3,
+  "highlight": "#FFD400",
+  "anim": "slide_up",
+  "pos": "low"
+ },
+ {
+  "id": "karaoke",
+  "name": "Karaoke",
+  "font": "Almarai-ExtraBold",
+  "fill": "#FFFFFF",
+  "stroke": "#000000",
+  "stroke_w": 6,
+  "words_per_line": 4,
+  "highlight": "#FFD400",
+  "anim": "word_color",
+  "pos": "center"
+ },
+ {
+  "id": "one_word",
+  "name": "One Word Punch",
+  "font": "Changa",
+  "fill": "#FFFFFF",
+  "stroke": "#000000",
+  "stroke_w": 10,
+  "words_per_line": 1,
+  "highlight": "#FFD400",
+  "anim": "scale_in",
+  "pos": "center"
+ },
+ {
+  "id": "clean",
+  "name": "Clean",
+  "font": "IBMPlexSansArabic-Bold",
+  "fill": "#FFFFFF",
+  "stroke": "#000000",
+  "stroke_w": 3,
+  "words_per_line": 3,
+  "highlight": null,
+  "anim": "fade",
+  "pos": "low"
+ },
+ {
+  "id": "yellow_bar",
+  "name": "Yellow Bar",
+  "font": "ElMessiri",
+  "fill": "#111111",
+  "bg": "#FFD400",
+  "words_per_line": 3,
+  "highlight": "#00A844",
+  "anim": "slide_up",
+  "pos": "low"
+ },
+ {
+  "id": "fun",
+  "name": "Fun",
+  "font": "Lemonada",
+  "fill": "#FFD400",
+  "stroke": "#000000",
+  "stroke_w": 6,
+  "words_per_line": 2,
+  "highlight": "#FFFFFF",
+  "anim": "bounce",
+  "pos": "center"
+ },
+ {
+  "id": "kufi",
+  "name": "Kufi Bold",
+  "font": "ReemKufi",
+  "fill": "#FFFFFF",
+  "bg": "#0B3D1E",
+  "words_per_line": 2,
+  "highlight": "#FFD400",
+  "anim": "pop",
+  "pos": "center_low"
+ }
+]
