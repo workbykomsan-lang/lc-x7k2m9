@@ -25,7 +25,9 @@ video,canvas{width:100%;border-radius:12px;background:#000}.msg{color:#9fd;font-
 <button id="tr" disabled>فرّغ الكلام</button><div class="msg" id="m2"></div><div class="words" id="words"></div></div>
 <div class="card"><div class="step">3) الاستايل والقص</div><div class="presets" id="presets"></div>
 <label>قص السكتات<input type="checkbox" id="cut" checked></label>
+<label>حساسية القص<select id="sens"><option value="0.7">خفيف</option><option value="0.4" selected>متوسط</option><option value="0.25">سريع</option></select></label>
 <label>أقل سكتة: <span id="gv">0.4</span>ث<input type="range" id="gap" min="0.15" max="1.2" step="0.05" value="0.4"></label>
+<label>ظبط علو الصوت -14 LUFS (ريلز/تيك توك)<input type="checkbox" id="loud" checked></label>
 <label>زووم بين المقاطع<input type="checkbox" id="zoom" checked></label>
 <button id="rn" disabled>اعمل الفيديو</button><div class="msg" id="m3"></div><canvas id="cv" width="720" height="1280"></canvas></div>
 <div class="card" id="res" style="display:none"><div class="step">النتيجة</div><video id="out" controls playsinline></video><a id="dl"><button class="sec">نزّل الفيديو</button></a><div class="msg" id="stat"></div></div>
