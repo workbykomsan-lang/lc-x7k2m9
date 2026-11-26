@@ -1,0 +1,1 @@
+SFX library: 408 sounds from github.com/Reodelbasalan/adbertiser-sfx (commit ed6482e), licence CC0 1.0 (LICENSE file in that repo), synthesized by the author, no attribution required. Loaded on demand from jsDelivr.
